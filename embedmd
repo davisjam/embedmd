@@ -1,0 +1,207 @@
+#!/usr/bin/env perl
+#Author: Jamie Davis <davisjam@vt.edu>
+#Description: Easily embed markdown in HTML.
+
+use strict;
+use warnings;
+
+use Getopt::Long;
+
+my $VERSION = '1.0';
+# 16 Nov 2016
+
+my $shortUsage = "$0 [-h] [--version] [--shortversion] htmlFile\n";
+my $longUsage = "Usage: $0 [-h] [--version] [--shortversion] htmlFile
+  htmlFile may include lines of the form '\#INCLUDE markdown.formatted.file'
+  Converts the embedded markdown files to html and embeds them in the html file.
+  The resulting html file is printed to stdout.
+Example: $0 blog.html\n";
+
+#######
+# Arg processing
+#######
+
+my $f = $ARGV[0];
+if (not @ARGV)
+{
+  &shortUsage();
+  exit 1;
+}
+
+my %cli_opts;
+Getopt::Long::Configure('pass_through');
+GetOptions(\%cli_opts,
+  'version',
+  'shortversion',
+  'help',
+);
+
+if ($cli_opts{'version'}) { # Version info
+  print "\nThis is embedmd, version $VERSION.\n";
+  print "Jamie Davis\n";
+  print "https://github.com/davisjam/embedmd/\n\n";
+  exit 0;
+}
+if ($cli_opts{'shortversion'}) { # Just the version number string
+  print $VERSION;
+  exit 0;
+}
+if ($cli_opts{'help'}) { # Help
+  &longUsage();
+  exit 0;
+}
+
+if (@ARGV ne 1) {
+  print "Error, need exactly 1 HTML file\n";
+  exit 1;
+}
+
+&checkDependencies();
+
+#######
+# Meat of the program
+#######
+
+my $out = &embedMarkdownInHTML($ARGV[0]);
+print $out;
+exit 0;
+
+###############################################################################
+# Functions
+###############################################################################
+
+sub shortUsage {
+  print $shortUsage;
+}
+
+sub longUsage {
+  print $longUsage;
+}
+
+sub checkDependencies {
+  my @deps = ("markdown");
+  my @missing;
+  for my $dep (@deps) {
+    `which $dep 2>/dev/null 2>&1`;
+    my $rc = ($? >> 8);
+    if ($rc) {
+      push @missing, $dep;
+    }
+  }
+
+  if (@missing) {
+    &halt("Error, missing dependencies: <@missing>");
+  }
+}
+
+#input: ($htmlFile) - can have lines like '#INCLUDE markdown.formatted.file' 
+#output: ($newHTMLContents) - converts the INCLUDE'd markdown files to HTML and embeds them in the same string
+sub embedMarkdownInHTML {
+  my ($htmlFile) = @_;
+
+  if (not defined($htmlFile)) {
+    &halt("embedMarkdownInHTML: Internal error! No htmlFile provided??");
+  }
+  if (not -f $htmlFile) {
+    &halt("Error, no such file <$htmlFile>");
+  }
+
+  # Read HTML file.
+  my $contents = `cat $htmlFile`;
+
+  # Replace each '#INCLUDE markdown.file' with the markdown converted to HTML.
+  while ($contents =~ m/\#INCLUDE (\S+)/)
+  {
+    my $mdFile = $1;
+    my $mdAsHTML = `markdown $mdFile`;
+    $contents =~ s/\#INCLUDE \S+/$mdAsHTML/;
+  }
+
+  return $contents;
+}
+
+#input: ($msg)
+#output: ()
+# Prints "$msg\n" and exits
+sub halt
+{
+  my ($msg) = @_;
+  print "$msg\n";
+  exit 1;
+}
+
+###############################################################################
+# Documentation
+###############################################################################
+
+=pod
+
+=head1 NAME
+
+B<embedmd> - embed as html the contents of markdown files included in an html file
+
+
+=head1 SYNOPSIS
+
+B<embedmd> I<file>
+
+=head1 DESCRIPTION
+
+embedmd is a tool to make it easy to embed markdown formatting into an html file.
+If you have an html file and you want to put markdown into it:
+
+  1. Write the markdown content in separate files.
+  2. Add '#INCLUDE markdown.formatted.file' in the html file for each markdown input.
+  3. Use embedmd to convert the INCLUDE'd markdown files to html and embed them in the appropriate places.
+     The result is written to stdout; redirect it as you please.
+
+For the embedmd project page, see:
+
+    https://github.com/davisjam/embedmd/
+
+For more information about Markdown's syntax, see:
+
+    http://daringfireball.net/projects/markdown/
+
+=head1 BUGS
+
+To file bug reports or feature requests, open an issue on GitHub.
+
+=head1 AUTHOR
+
+Jamie Davis http://people.cs.vt.edu/~davisjam
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (c) Jamie Davis
+<http://people.cs.vt.edu/~davisjam>   
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+* Redistributions of source code must retain the above copyright notice,
+  this list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright
+  notice, this list of conditions and the following disclaimer in the
+  documentation and/or other materials provided with the distribution.
+
+* Neither the name "embedmd" nor the names of its contributors may
+  be used to endorse or promote products derived from this software
+  without specific prior written permission.
+
+This software is provided by the copyright holders and contributors "as
+is" and any express or implied warranties, including, but not limited
+to, the implied warranties of merchantability and fitness for a
+particular purpose are disclaimed. In no event shall the copyright owner
+or contributors be liable for any direct, indirect, incidental, special,
+exemplary, or consequential damages (including, but not limited to,
+procurement of substitute goods or services; loss of use, data, or
+profits; or business interruption) however caused and on any theory of
+liability, whether in contract, strict liability, or tort (including
+negligence or otherwise) arising in any way out of the use of this
+software, even if advised of the possibility of such damage.
+
+=cut
