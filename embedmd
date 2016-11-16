@@ -110,11 +110,11 @@ sub embedMarkdownInHTML {
   my $contents = `cat $htmlFile`;
 
   # Replace each '#INCLUDE markdown.file' with the markdown converted to HTML.
-  while ($contents =~ m/\#INCLUDE (\S+)/)
+  while ($contents =~ m/\#INCLUDE (\S+\.md)/)
   {
     my $mdFile = $1;
     my $mdAsHTML = `markdown $mdFile`;
-    $contents =~ s/\#INCLUDE \S+/$mdAsHTML/;
+    $contents =~ s/\#INCLUDE \S+\.md/$mdAsHTML/;
   }
 
   return $contents;
